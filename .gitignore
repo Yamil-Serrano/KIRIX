@@ -1,0 +1,40 @@
+# Build directories
+build/
+bin/
+out/
+output/
+
+# Simulation outputs
+*.vcd
+*.fst
+*.ghw
+*.wlf
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Compiled objects
+*.o
+
+# Generated bitstreams
+*.fs
+*.bin
+*.bit
+*.jed
+*.svf
+
+# Gowin project outputs
+impl/
+cache/
+temp/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
