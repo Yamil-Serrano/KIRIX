@@ -47,7 +47,8 @@ wire [3:0] shift_amount = B[3:0]; // for shift operation we use 4 bits only from
                                         // shifts in the lower 4 bits of B.
 
 // Operations
-wire [15:0] sum_result  =   A + B;
+wire [16:0] full_sum = {1'b0, A} + {1'b0, B}; // puts another bit in front of MSB of A and B to catch the carry out
+wire [15:0] sum_result = full_sum[15:0]; // the result
 wire [15:0] sub_result  =   A - B;
 wire [15:0] and_result  =   A & B;
 wire [15:0] nand_result = ~(A & B);
@@ -61,8 +62,8 @@ wire [15:0] shift_right =  A >> shift_amount;
 // dont allow shift with negative numbers, but if we do 16-4 we get 12, and the result is the same because
 // of the nature of the roll operation. The assembler must ensure to tell the programmer to put number of 
 // shifts in the lower 4 bits of B.
-wire [15:0] roll_right_result = (A >> shift_amount) | (A << (16 - shift_amount));
-wire [15:0] roll_left_result  = (A << shift_amount) | (A >> (16 - shift_amount));
+wire [15:0] roll_right_result = shift_amount == 0 ? A : (A >> shift_amount) | (A << (16 - shift_amount));
+wire [15:0] roll_left_result  = shift_amount == 0 ? A : (A << shift_amount) | (A >> (16 - shift_amount));
 
 wire [15:0] neg_result = ~A + 1'b1;        // NEG: change sign (two's complement)
 wire [15:0] inc_result = A + 1'b1;
@@ -93,13 +94,24 @@ always @(*) begin
     endcase
 end
 
-// Flags simples
+// Flags 
+
 assign Zero  = (Result == 0);
 assign Equal = (A == B);
-assign Carry = sum_result[16];
-assign Borrow = (A < B); // Borrow occurs if A is less than B in subtraction
-assign Overflow = (A[15]==0 && B[15]==0 && Result[15]==1) ||  // (+) + (+) = (-)
-                  (A[15]==1 && B[15]==1 && Result[15]==0);    // (-) + (-) = (+)
+
+// Carry, Borrow and Overflow are generated combinationally.
+// Carry and Borrow are always available.
+// Overflow is defined for arithmetic operations where signed overflow applies.
+// Zero and Equal are generated for every operation.
+
+assign Carry = full_sum[16];
+assign Borrow = (A < B); // Borrow occurs when A is less than B in subtraction.
+assign Overflow = (OP == 4'b0000 && ((A[15]==0 && B[15]==0 && Result[15]==1) || (A[15]==1 && B[15]==1 && Result[15]==0)))  || // (+) + (+) = (-) or (-) + (-) = (+) 
+                  (OP == 4'b0001 && ((A[15]==1 && B[15]==0 && Result[15]==0) || (A[15]==0 && B[15]==1 && Result[15]==1)))  || // (-) - (+) = (+) or (+) - (-) = (-)
+                  (OP == 4'b1101 && A[15]==0 && Result[15]==1)                                                             || // INC: (+) = (-)
+                  (OP == 4'b1110 && A[15]==1 && Result[15]==0)                                                             || // DEC: (-) = (+)
+                  (OP == 4'b1100 && A == 16'h8000)                                                                         || // NEG: (-) = (+)
+                  (OP == 4'b1111 && A == 16'h8000);                                                                           // ABS: (-) 
 
 
 endmodule
